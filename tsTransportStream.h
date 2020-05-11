@@ -25,14 +25,14 @@ MPEG-TS packet header:
 `   0 |       SB      |E|S|T|           PID           |TSC|AFC|   CC  | `
 `     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ `
 
-Sync byte                    (SB ) :  8 bits TODO: 0 - 7
-Transport error indicator    (E  ) :  1 bit  TODO: 8
-Payload unit start indicator (S  ) :  1 bit  TODO: 9
-Transport priority           (T  ) :  1 bit  TODO: 10
-Packet Identifier            (PID) : 13 bits TODO: 11 - 23
-Transport scrambling control (TSC) :  2 bits TODO: 24 - 25
-Adaptation field control     (AFC) :  2 bits TODO: 26 - 27
-Continuity counter           (CC ) :  4 bits TODO: 28 - 31
+Sync byte                    (SB ) :  8 bits
+Transport error indicator    (E  ) :  1 bit
+Payload unit start indicator (S  ) :  1 bit
+Transport priority           (T  ) :  1 bit
+Packet Identifier            (PID) : 13 bits
+Transport scrambling control (TSC) :  2 bits
+Adaptation field control     (AFC) :  2 bits
+Continuity counter           (CC ) :  4 bits
 */
 
 
@@ -94,24 +94,99 @@ public:
 
     void setContinuityCounter(const bitset<4> &continuityCounter);
 
-public:
+    const bitset<8> &getSyncByte() const;
+
+    const bitset<1> &getTransportErrorIndicator() const;
+
+    const bitset<1> &getPayloadUnitStartIndicator() const;
+
+    const bitset<1> &getTransportPriority() const;
+
+    const bitset<13> &getPacketIdentifier() const;
+
+    const bitset<2> &getTransportScramblingControl() const;
+
+    const bitset<2> &getAdaptationFieldControl() const;
+
+    const bitset<4> &getContinuityCounter() const;
+
     void Reset();
-    int32_t Parse(bitset<8> * Input);
+
+    int32_t Parse(bitset<8> *Input);
+
     void Print() const;
 
 public:
-    const bitset<8> &getSyncByte() const;
-    const bitset<1> &getTransportErrorIndicator() const;
-    const bitset<1> &getPayloadUnitStartIndicator() const;
-    const bitset<1> &getTransportPriority() const;
-    const bitset<13> &getPacketIdentifier() const;
-    const bitset<2> &getTransportScramblingControl() const;
-    const bitset<2> &getAdaptationFieldControl() const;
-    const bitset<4> &getContinuityCounter() const;
+      bool     hasAdaptationField() const;
+      bool     hasPayload        () const;
+};
+
+
+
+class xTS_AdaptationField {
+protected:
+    bitset<8> AdaptationFieldLength;
+    bitset<1> DiscontinuityIndicator;
+    bitset<1> RandomAccessIndicator;
+    bitset<1> ElementaryStreamPriorityIndicator;
+    bitset<1> ProgramClockReferenceFlag;
+    bitset<1> OriginalProgramClockReferenceFlag;
+    bitset<1> SplicingPointFlag;
+    bitset<1> TransportPrivateDataFlag;
+    bitset<1> AdaptationFieldExtensionFlag;
 
 public:
-//  bool     hasAdaptationField() const { /*TODO*/ }
-//  bool     hasPayload        () const { /*TODO*/ }
+    void setAdaptationFieldLength(const bitset<8> &adaptationFieldLength);
+
+
+    void setDiscontinuityIndicator(const bitset<1> &discontinuityIndicator);
+
+
+    void setRandomAccessIndicator(const bitset<1> &randomAccessIndicator);
+
+
+    void setElementaryStreamPriorityIndicator(const bitset<1> &elementaryStreamPriorityIndicator);
+
+
+    void setProgramClockReferenceFlag(const bitset<1> &programClockReferenceFlag);
+
+
+    void setOriginalProgramClockReferenceFlag(const bitset<1> &originalProgramClockReferenceFlag);
+
+
+    void setSplicingPointFlag(const bitset<1> &splicingPointFlag);
+
+
+    void setTransportPrivateDataFlag(const bitset<1> &transportPrivateDataFlag);
+
+
+    void setAdaptationFieldExtensionFlag(const bitset<1> &adaptationFieldExtensionFlag);
+
+    const bitset<8> &getAdaptationFieldLength() const;
+
+    const bitset<1> &getDiscontinuityIndicator() const;
+
+    const bitset<1> &getRandomAccessIndicator() const;
+
+    const bitset<1> &getElementaryStreamPriorityIndicator() const;
+
+    const bitset<1> &getProgramClockReferenceFlag() const;
+
+    const bitset<1> &getOriginalProgramClockReferenceFlag() const;
+
+    const bitset<1> &getSplicingPointFlag() const;
+
+    const bitset<1> &getTransportPrivateDataFlag() const;
+
+    const bitset<1> &getAdaptationFieldExtensionFlag() const;
+
+    void Reset();
+
+    void Print() const;
+
+    uint32_t getNumBytes() const {}
+
+    int32_t Parse(bitset<8> *Input, bitset<2> AdaptationFieldControl);
 };
 
 //=============================================================================================================================================================================
