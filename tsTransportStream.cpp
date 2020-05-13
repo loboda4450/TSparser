@@ -28,7 +28,7 @@ void xTS_PacketHeader::Print() const {
     << " TSC=" << (uint16_t)(getTransportScramblingControl().to_ulong())
     << " AF=" << (uint16_t)(getAdaptationFieldControl().to_ulong())
     << " CC=" << (uint16_t)(getContinuityCounter().to_ulong());
-    if(!hasAdaptationField()) printf("\n");
+    if(!hasAdaptationField()) cout << endl;
 }
 
 int32_t xTS_PacketHeader::Parse(bitset<8> * Input) {
@@ -45,13 +45,6 @@ int32_t xTS_PacketHeader::Parse(bitset<8> * Input) {
     setTransportScramblingControl((bitset<2>(Header.substr(24, 2))));
     setAdaptationFieldControl((bitset<2>(Header.substr(26, 2))));
     setContinuityCounter((bitset<4>(Header.substr(28, 4))));
-
-    if(hasAdaptationField()){
-        xTS_AdaptationField TS_AdaptationField;
-        TS_AdaptationField.Reset();
-        TS_AdaptationField.Parse(Input, getAdaptationFieldControl());
-        TS_AdaptationField.Print();
-    }
 
     return Hehe;
 }
@@ -77,6 +70,7 @@ const bitset<2> &xTS_PacketHeader::getTransportScramblingControl() const {
 const bitset<2> &xTS_PacketHeader::getAdaptationFieldControl() const {
     return adaptationFieldControl;
 }
+
 const bitset<4> &xTS_PacketHeader::getContinuityCounter() const {
     return continuityCounter;
 }
@@ -112,7 +106,7 @@ bool xTS_PacketHeader::hasAdaptationField() const {
 }
 
 bool xTS_PacketHeader::hasPayload() const {
-    return getAdaptationFieldControl().to_ulong() == 3;
+    return getAdaptationFieldControl().to_string() == "11";
 }
 
 //=============================================================================================================================================================================
