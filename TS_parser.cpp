@@ -25,6 +25,7 @@ int main( int argc, char *argv[ ], char *envp[ ]) {
 
         TS_PacketHeader.Reset();
         TS_PacketHeader.Parse(ts_buffor);
+        TS_AdaptationField.Parse(ts_buffor, TS_PacketHeader.getAdaptationFieldControl());
         printf("%010d TS:", TS_PacketId);
         TS_PacketHeader.Print();
 
@@ -35,10 +36,11 @@ int main( int argc, char *argv[ ], char *envp[ ]) {
         }
 
         TS_PacketId++;
-        if(TS_PacketId > 100){
+        if(TS_PacketId > 189){
             break;
         }
     }
+
     free (buffer);
     fclose(file);
     return 0;

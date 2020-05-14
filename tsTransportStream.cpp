@@ -17,8 +17,8 @@ void xTS_PacketHeader::Reset() {
     setTransportScramblingControl(0x00);
     setAdaptationFieldControl(0x00);
     setContinuityCounter(0x0000);
-
 }
+
 void xTS_PacketHeader::Print() const {
     cout << " SB=" <<(uint32_t)(getSyncByte().to_ulong())
     << " E=" << getTransportErrorIndicator()
@@ -70,11 +70,9 @@ const bitset<2> &xTS_PacketHeader::getTransportScramblingControl() const {
 const bitset<2> &xTS_PacketHeader::getAdaptationFieldControl() const {
     return adaptationFieldControl;
 }
-
 const bitset<4> &xTS_PacketHeader::getContinuityCounter() const {
     return continuityCounter;
 }
-
 void xTS_PacketHeader::setSyncByte(const bitset<8> &value) {
     xTS_PacketHeader::syncByte = value;
 }
@@ -101,10 +99,9 @@ void xTS_PacketHeader::setContinuityCounter(const bitset<4> &value) {
 }
 
 bool xTS_PacketHeader::hasAdaptationField() const {
-    auto tmp = getAdaptationFieldControl().to_string();
-    return tmp == "10" or tmp == "11";
+    auto afc = getAdaptationFieldControl().to_string();
+    return afc == "10" or afc == "11";
 }
-
 bool xTS_PacketHeader::hasPayload() const {
     return getAdaptationFieldControl().to_string() == "11";
 }
@@ -185,6 +182,38 @@ void xTS_AdaptationField::setAdaptationFieldExtensionFlag(const bitset<1> &adapt
     AdaptationFieldExtensionFlag = adaptationFieldExtensionFlag;
 }
 
+/*  if PCR == 1:
+ *      program_clock_reference_base.len = 33bit
+ *      reserved.len = 6bit
+ *      program_clock_reference_extension.len = 9bit
+ *      stuffing.len = stuffing.len - 48bit
+ *
+ *  if OPCR == 1:
+ *      original_program_clock_reference_base.len = 33bit
+ *      reserved.len = 6bit
+ *      original_program_clock_reference_extension.len = 9bit
+ *      stuffing.len = stuffing.len - 48bit
+ *
+ *  if SP == 1:
+ *      stuffing.len = stuffing.len - 8bit
+ *
+ *  if TP == 1:
+ *      stuffing.len = stuffing.len - (8 + transport_private_data_length*8)bit
+ *
+ *  if EX == 1:
+ *      stuffing.len = stuffing.len - 16bit
+ *      if ltw == 1:
+ *          stuffing.len = stuffing.len - 16bit
+ *
+ *      if piecewise_rate_flag == 1:
+ *          stuffing.len = stuffing.len - 24bit
+ *
+ *      if seamless_splice_flag == 1:
+ *          stuffing.len = stuffing.len - 40bit
+ *
+ *      stuffing.len = stuffing.len -
+*/
+
 void xTS_AdaptationField::Reset() {
     setAdaptationFieldLength(0x00000000);
     setDiscontinuityIndicator(0x0);
@@ -195,6 +224,32 @@ void xTS_AdaptationField::Reset() {
     setSplicingPointFlag(0x0);
     setTransportPrivateDataFlag(0x0);
     setAdaptationFieldExtensionFlag(0x0);
+    setProgramClockReferenceBase(0x000000000000000000000000000000000);
+    setPcrReserved(0x000000);
+    setProgramClockReferenceExtension(0x000000000);
+    setOriginalProgramClockReferenceBase(0x000000000000000000000000000000000);
+    setOpcrReserved(0x000000);
+    setOriginalProgramClockReferenceExtension(0x000000000);
+    setSpliceCountdown(0x00000000);
+    setTransportPrivateDataLength(0x00000000);
+    setAdaptationFieldExtensionLength(0x00000000);
+    setLtwFlag(0x0);
+    setPiecewiseRateFlag(0x0);
+    setSeamlessSpliceFlag(0x0);
+    setExReserved(0x00000);
+    setLtwValidFlag(0x0);
+    setLtwOffset(0x000000000000000);
+    setPiecewiseReserved(0x00);
+    setPiecewiseRate(0x0000000000000000000000);
+    setSpliceType(0x0000);
+    setDtsNext32(0x000);
+    setFMarker(0x0);
+    setDtsNext29(0x000000000000000);
+    setSMarker(0x0);
+    setDtsNext14(0x000000000000000);
+    setTMarker(0x0);
+    setAfexReservedLength(0);
+    setStuffingLength(0);
 }
 
 void xTS_AdaptationField::Print() const {
@@ -206,21 +261,312 @@ void xTS_AdaptationField::Print() const {
     << " OR=" << getOriginalProgramClockReferenceFlag()
     << " SP=" << getSplicingPointFlag()
     << " TP=" << getTransportPrivateDataFlag()
-    << " EX=" << getAdaptationFieldExtensionFlag()
-    << endl;
+    << " EX=" << getAdaptationFieldExtensionFlag();
+
+    if(getProgramClockReferenceFlag() == 1) {
+        cout << " PCR=" << getProgramClockReferenceBase().to_ulong()*300+getProgramClockReferenceExtension().to_ulong();
+    }
+    if(getOriginalProgramClockReferenceFlag() == 1) {
+        cout << " OPCR=" << getOriginalProgramClockReferenceBase().to_ulong()*300+getOriginalProgramClockReferenceExtension().to_ulong();
+    }
+
+    cout << " Stuffing=" << getStuffingLength() << endl;
 }
 
 int32_t xTS_AdaptationField::Parse(bitset<8> *Input, bitset<2> AdaptationFieldControl) {
-    string af = Input[5].to_string();
+    size_t index = 0;
+    string af;
+
+    for(int i = 5; i < 188;i++){
+        af += Input[i].to_string();
+    }
+
     setAdaptationFieldLength(bitset<8> (Input[4].to_string()));
-    setDiscontinuityIndicator(bitset<1> (af[0]));
-    setRandomAccessIndicator(bitset<1>(af[1]));
-    setElementaryStreamPriorityIndicator(bitset<1>(af[2]));
-    setProgramClockReferenceFlag(bitset<1>(af[3]));
-    setOriginalProgramClockReferenceFlag(bitset<1> (af[4]));
-    setSplicingPointFlag(bitset<1>(af[5]));
-    setTransportPrivateDataFlag(bitset<1>(af[6]));
-    setAdaptationFieldExtensionFlag(bitset<1>(af[7]));
+    setDiscontinuityIndicator(bitset<1> (af[index++]));
+    setRandomAccessIndicator(bitset<1>(af[index++]));
+    setElementaryStreamPriorityIndicator(bitset<1>(af[index++]));
+    setProgramClockReferenceFlag(bitset<1>(af[index++]));
+    setOriginalProgramClockReferenceFlag(bitset<1> (af[index++]));
+    setSplicingPointFlag(bitset<1>(af[index++]));
+    setTransportPrivateDataFlag(bitset<1>(af[index++]));
+    setAdaptationFieldExtensionFlag(bitset<1>(af[index++]));
+
+    if(getProgramClockReferenceFlag() == 1) {
+        setProgramClockReferenceBase(bitset<33>(af.substr(index, 33)));
+        index += 33;
+        setPcrReserved(bitset<6>(af.substr(index, 6)));
+        index += 6;
+        setProgramClockReferenceExtension(bitset<9>(af.substr(index, 9)));
+        index += 9;
+    }
+
+    if(getOriginalProgramClockReferenceFlag() == 1) {
+        setOriginalProgramClockReferenceBase(bitset<33> (af.substr(index, 33)));
+        index += 33;
+        setOpcrReserved(bitset<6> (af.substr(index, 6)));
+        index += 6;
+        setOriginalProgramClockReferenceExtension(bitset<9> (af.substr(index, 9)));
+        index += 9;
+    }
+
+    if(getSplicingPointFlag() == 1) {
+//        setSpliceCountdown(bitset<8> (af.substr(index, 8)));
+        index += 8;
+    }
+    if(getTransportPrivateDataFlag() == 1) {
+//        setTransportPrivateDataLength(bitset<8> (af.substr(index, 8)));
+        index += 8;
+    }
+    if(getAdaptationFieldExtensionFlag() == 1) {
+//        setAdaptationFieldExtensionLength(bitset<8> (af.substr(index, 8)));
+//        index += 8;
+//        setLtwFlag(bitset<1> (af[index]));
+//        setPiecewiseRateFlag(bitset<1> (af[index++]));
+//        setSeamlessSpliceFlag(bitset<1> (af[index++]));
+//        setExReserved(bitset<5> (af.substr(index, 5)));
+        index += 16;
+
+        if(getLtwFlag() == 1) {
+//            setLtwValidFlag(bitset<1> (af[index++]));
+//            setLtwOffset(bitset<15> (af.substr(index, 15)));
+            index += 16;
+        }
+
+        if(getPiecewiseRateFlag() == 1) {
+//            setPiecewiseReserved(bitset<2> (af.substr(index, 2)));
+//            index += 2;
+//            setPiecewiseRate(bitset<22> (af.substr(index, 22)));
+            index += 24;
+        }
+
+        if(getSeamlessSpliceFlag() == 1) {
+//            setSpliceType(bitset<4> (af.substr(index, 4)));
+//            index += 4;
+//            setDtsNext32(bitset<3> (af.substr(index, 3)));
+//            index += 3;
+//            setFMarker(bitset<1> (af[index++]));
+//            setDtsNext29(bitset<15> (af.substr(index, 15)));
+//            index += 15;
+//            setSMarker(bitset<1> (af[index++]));
+//            setDtsNext14(bitset<15> (af.substr(index, 15)));
+//            index += 15;
+//            setTMarker(bitset<1> (af[index++]));
+            index += 32;
+        }
+
+        setAfexReservedLength(188 - index/8);
+    }
+
+    setStuffingLength(getAdaptationFieldLength().to_ulong() - index/8);
 
     return 0;
+}
+
+void xTS_AdaptationField::setProgramClockReferenceBase(const bitset<33> &programClockReferenceBase) {
+    ProgramClockReferenceBase = programClockReferenceBase;
+}
+
+void xTS_AdaptationField::setPcrReserved(const bitset<6> &pcrReserved) {
+    PCRReserved = pcrReserved;
+}
+
+void xTS_AdaptationField::setProgramClockReferenceExtension(const bitset<9> &programClockReferenceExtension) {
+    ProgramClockReferenceExtension = programClockReferenceExtension;
+}
+
+void xTS_AdaptationField::setOriginalProgramClockReferenceBase(const bitset<33> &originalProgramClockReferenceBase) {
+    OriginalProgramClockReferenceBase = originalProgramClockReferenceBase;
+}
+
+void xTS_AdaptationField::setOpcrReserved(const bitset<6> &opcrReserved) {
+    OPCRReserved = opcrReserved;
+}
+
+void xTS_AdaptationField::setOriginalProgramClockReferenceExtension(
+        const bitset<9> &originalProgramClockReferenceExtension) {
+    OriginalProgramClockReferenceExtension = originalProgramClockReferenceExtension;
+}
+
+void xTS_AdaptationField::setSpliceCountdown(const bitset<8> &spliceCountdown) {
+    SpliceCountdown = spliceCountdown;
+}
+
+void xTS_AdaptationField::setTransportPrivateDataLength(const bitset<8> &transportPrivateDataLength) {
+    TransportPrivateDataLength = transportPrivateDataLength;
+}
+
+void xTS_AdaptationField::setAdaptationFieldExtensionLength(const bitset<8> &adaptationFieldExtensionLength) {
+    AdaptationFieldExtensionLength = adaptationFieldExtensionLength;
+}
+
+void xTS_AdaptationField::setLtwFlag(const bitset<1> &ltwFlag) {
+    xTS_AdaptationField::ltwFlag = ltwFlag;
+}
+
+void xTS_AdaptationField::setPiecewiseRateFlag(const bitset<1> &piecewiseRateFlag) {
+    PiecewiseRateFlag = piecewiseRateFlag;
+}
+
+void xTS_AdaptationField::setSeamlessSpliceFlag(const bitset<1> &seamlessSpliceFlag) {
+    SeamlessSpliceFlag = seamlessSpliceFlag;
+}
+
+void xTS_AdaptationField::setExReserved(const bitset<5> &exReserved) {
+    EXReserved = exReserved;
+}
+
+void xTS_AdaptationField::setLtwValidFlag(const bitset<1> &ltwValidFlag) {
+    xTS_AdaptationField::ltwValidFlag = ltwValidFlag;
+}
+
+void xTS_AdaptationField::setLtwOffset(const bitset<15> &ltwOffset) {
+    xTS_AdaptationField::ltwOffset = ltwOffset;
+}
+
+void xTS_AdaptationField::setPiecewiseReserved(const bitset<2> &piecewiseReserved) {
+    PiecewiseReserved = piecewiseReserved;
+}
+
+void xTS_AdaptationField::setPiecewiseRate(const bitset<22> &piecewiseRate) {
+    PiecewiseRate = piecewiseRate;
+}
+
+void xTS_AdaptationField::setSpliceType(const bitset<4> &spliceType) {
+    SpliceType = spliceType;
+}
+
+void xTS_AdaptationField::setDtsNext32(const bitset<3> &dtsNext32) {
+    DtsNext32 = dtsNext32;
+}
+
+void xTS_AdaptationField::setFMarker(const bitset<1> &fMarker) {
+    FMarker = fMarker;
+}
+
+void xTS_AdaptationField::setDtsNext29(const bitset<15> &dtsNext29) {
+    DtsNext29 = dtsNext29;
+}
+
+void xTS_AdaptationField::setSMarker(const bitset<1> &sMarker) {
+    SMarker = sMarker;
+}
+
+void xTS_AdaptationField::setDtsNext14(const bitset<15> &dtsNext14) {
+    DtsNext14 = dtsNext14;
+}
+
+void xTS_AdaptationField::setTMarker(const bitset<1> &tMarker) {
+    TMarker = tMarker;
+}
+
+void xTS_AdaptationField::setAfexReservedLength(u_int16_t afexReservedLength) {
+    AFEXReservedLength = afexReservedLength;
+}
+
+void xTS_AdaptationField::setStuffingLength(u_int16_t stuffingLength) {
+    StuffingLength = stuffingLength;
+}
+
+const bitset<33> &xTS_AdaptationField::getProgramClockReferenceBase() const {
+    return ProgramClockReferenceBase;
+}
+
+const bitset<6> &xTS_AdaptationField::getPcrReserved() const {
+    return PCRReserved;
+}
+
+const bitset<9> &xTS_AdaptationField::getProgramClockReferenceExtension() const {
+    return ProgramClockReferenceExtension;
+}
+
+const bitset<33> &xTS_AdaptationField::getOriginalProgramClockReferenceBase() const {
+    return OriginalProgramClockReferenceBase;
+}
+
+const bitset<6> &xTS_AdaptationField::getOpcrReserved() const {
+    return OPCRReserved;
+}
+
+const bitset<9> &xTS_AdaptationField::getOriginalProgramClockReferenceExtension() const {
+    return OriginalProgramClockReferenceExtension;
+}
+
+const bitset<8> &xTS_AdaptationField::getSpliceCountdown() const {
+    return SpliceCountdown;
+}
+
+const bitset<8> &xTS_AdaptationField::getTransportPrivateDataLength() const {
+    return TransportPrivateDataLength;
+}
+
+const bitset<8> &xTS_AdaptationField::getAdaptationFieldExtensionLength() const {
+    return AdaptationFieldExtensionLength;
+}
+
+const bitset<1> &xTS_AdaptationField::getLtwFlag() const {
+    return ltwFlag;
+}
+
+const bitset<1> &xTS_AdaptationField::getPiecewiseRateFlag() const {
+    return PiecewiseRateFlag;
+}
+
+const bitset<1> &xTS_AdaptationField::getSeamlessSpliceFlag() const {
+    return SeamlessSpliceFlag;
+}
+
+const bitset<5> &xTS_AdaptationField::getExReserved() const {
+    return EXReserved;
+}
+
+const bitset<1> &xTS_AdaptationField::getLtwValidFlag() const {
+    return ltwValidFlag;
+}
+
+const bitset<15> &xTS_AdaptationField::getLtwOffset() const {
+    return ltwOffset;
+}
+
+const bitset<2> &xTS_AdaptationField::getPiecewiseReserved() const {
+    return PiecewiseReserved;
+}
+
+const bitset<22> &xTS_AdaptationField::getPiecewiseRate() const {
+    return PiecewiseRate;
+}
+
+const bitset<4> &xTS_AdaptationField::getSpliceType() const {
+    return SpliceType;
+}
+
+const bitset<3> &xTS_AdaptationField::getDtsNext32() const {
+    return DtsNext32;
+}
+
+const bitset<1> &xTS_AdaptationField::getFMarker() const {
+    return FMarker;
+}
+
+const bitset<15> &xTS_AdaptationField::getDtsNext29() const {
+    return DtsNext29;
+}
+
+const bitset<1> &xTS_AdaptationField::getSMarker() const {
+    return SMarker;
+}
+
+const bitset<15> &xTS_AdaptationField::getDtsNext14() const {
+    return DtsNext14;
+}
+
+const bitset<1> &xTS_AdaptationField::getTMarker() const {
+    return TMarker;
+}
+
+u_int16_t xTS_AdaptationField::getAfexReservedLength() const {
+    return AFEXReservedLength;
+}
+
+u_int16_t xTS_AdaptationField::getStuffingLength() const {
+    return StuffingLength;
 }
