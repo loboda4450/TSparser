@@ -56,6 +56,16 @@ public:
 //=============================================================================================================================================================================
 
 class xTS_PacketHeader {
+protected:
+    bitset<8>  syncByte;
+    bitset<1>  transportErrorIndicator;
+    bitset<1>  payloadUnitStartIndicator;
+    bitset<1>  transportPriority;
+    bitset<13> packetIdentifier;
+    bitset<2>  transportScramblingControl;
+    bitset<2>  adaptationFieldControl;
+    bitset<4>  continuityCounter;
+
 public:
     enum class ePID : uint16_t {
         PAT = 0x0000,
@@ -67,100 +77,67 @@ public:
         NuLL = 0x1FFF,
     };
 
-protected:
-    bitset<8> syncByte;
-    bitset<1> transportErrorIndicator;
-    bitset<1> payloadUnitStartIndicator;
-    bitset<1> transportPriority;
-    bitset<13> packetIdentifier;
-    bitset<2> transportScramblingControl;
-    bitset<2> adaptationFieldControl;
-    bitset<4> continuityCounter;
-
-public:
     void setSyncByte(const bitset<8> &syncByte);
-
     void setTransportErrorIndicator(const bitset<1> &transportErrorIndicator);
-
     void setPayloadUnitStartIndicator(const bitset<1> &payloadUnitStartIndicator);
-
     void setTransportPriority(const bitset<1> &transportPriority);
-
     void setPacketIdentifier(const bitset<13> &packetIdentifier);
-
     void setTransportScramblingControl(const bitset<2> &value);
-
     void setAdaptationFieldControl(const bitset<2> &adaptationFieldControl);
-
     void setContinuityCounter(const bitset<4> &continuityCounter);
-
     const bitset<8> &getSyncByte() const;
-
     const bitset<1> &getTransportErrorIndicator() const;
-
     const bitset<1> &getPayloadUnitStartIndicator() const;
-
     const bitset<1> &getTransportPriority() const;
-
     const bitset<13> &getPacketIdentifier() const;
-
     const bitset<2> &getTransportScramblingControl() const;
-
     const bitset<2> &getAdaptationFieldControl() const;
-
     const bitset<4> &getContinuityCounter() const;
-
     void Reset();
-
     int32_t Parse(bitset<8> *Input);
-
     void Print() const;
-
-public:
-      bool     hasAdaptationField() const;
-      bool     hasPayload        () const;
+    bool hasAdaptationField() const;
+    bool hasPayload() const;
 };
-
 
 
 class xTS_AdaptationField {
 protected:
-    bitset<8> AdaptationFieldLength;
-protected:
-    bitset<1> DiscontinuityIndicator;
-    bitset<1> RandomAccessIndicator;
-    bitset<1> ElementaryStreamPriorityIndicator;
-    bitset<1> ProgramClockReferenceFlag;
-    bitset<1> OriginalProgramClockReferenceFlag;
-    bitset<1> SplicingPointFlag;
-    bitset<1> TransportPrivateDataFlag;
-    bitset<1> AdaptationFieldExtensionFlag;
+    bitset<8>  AdaptationFieldLength;
+    bitset<1>  DiscontinuityIndicator;
+    bitset<1>  RandomAccessIndicator;
+    bitset<1>  ElementaryStreamPriorityIndicator;
+    bitset<1>  ProgramClockReferenceFlag;
+    bitset<1>  OriginalProgramClockReferenceFlag;
+    bitset<1>  SplicingPointFlag;
+    bitset<1>  TransportPrivateDataFlag;
+    bitset<1>  AdaptationFieldExtensionFlag;
     bitset<33> ProgramClockReferenceBase;
-    bitset<6> PCRReserved;
-    bitset<9> ProgramClockReferenceExtension;
+    bitset<6>  PCRReserved;
+    bitset<9>  ProgramClockReferenceExtension;
     bitset<33> OriginalProgramClockReferenceBase;
-    bitset<6> OPCRReserved;
-    bitset<9> OriginalProgramClockReferenceExtension;
-    bitset<8> SpliceCountdown;
-    bitset<8> TransportPrivateDataLength;
-    bitset<8> AdaptationFieldExtensionLength;
-    bitset<1> ltwFlag;
-    bitset<1> PiecewiseRateFlag;
-    bitset<1> SeamlessSpliceFlag;
-    bitset<5> EXReserved;
-    bitset<1> ltwValidFlag;
+    bitset<6>  OPCRReserved;
+    bitset<9>  OriginalProgramClockReferenceExtension;
+    bitset<8>  SpliceCountdown;
+    bitset<8>  TransportPrivateDataLength;
+    bitset<8>  AdaptationFieldExtensionLength;
+    bitset<1>  ltwFlag;
+    bitset<1>  PiecewiseRateFlag;
+    bitset<1>  SeamlessSpliceFlag;
+    bitset<5>  EXReserved;
+    bitset<1>  ltwValidFlag;
     bitset<15> ltwOffset;
-    bitset<2> PiecewiseReserved;
+    bitset<2>  PiecewiseReserved;
     bitset<22> PiecewiseRate;
-    bitset<4> SpliceType;
-    bitset<3> DtsNext32;
-    bitset<1> FMarker;
+    bitset<4>  SpliceType;
+    bitset<3>  DtsNext32;
+    bitset<1>  FMarker;
     bitset<15> DtsNext29;
-    bitset<1> SMarker;
+    bitset<1>  SMarker;
     bitset<15> DtsNext14;
-    bitset<1> TMarker;
-    u_int16_t AFEXReservedLength;
-    u_int16_t StuffingLength;
+    bitset<1>  TMarker;
+    u_int16_t  AFEXReservedLength;
+    u_int16_t  StuffingLength;
 
 public:
     void setAdaptationFieldLength(const bitset<8> &adaptationFieldLength);
@@ -237,7 +214,7 @@ public:
 
     void Reset();
     void Print() const;
-    uint32_t getNumBytes() const {}
+    uint32_t getNumBytes(size_t index) const;
     int32_t Parse(bitset<8> *Input, bitset<2> AdaptationFieldControl);
 };
 
