@@ -93,6 +93,7 @@ public:
     const bitset<2> &getTransportScramblingControl() const;
     const bitset<2> &getAdaptationFieldControl() const;
     const bitset<4> &getContinuityCounter() const;
+
     void Reset();
     int32_t Parse(bitset<8> *Input);
     void Print() const;
@@ -100,6 +101,7 @@ public:
     bool hasPayload() const;
 };
 
+//=============================================================================================================================================================================
 
 class xTS_AdaptationField {
 protected:
@@ -219,3 +221,146 @@ public:
 };
 
 //=============================================================================================================================================================================
+
+class xPES_PacketHeader
+{
+public:
+    enum eStreamId : uint8_t
+    {
+        eStreamId_program_stream_map       = 0xBC,
+        eStreamId_padding_stream           = 0xBE,
+        eStreamId_private_stream_2         = 0xBF,
+        eStreamId_ECM                      = 0xF0,
+        eStreamId_EMM                      = 0xF1,
+        eStreamId_program_stream_directory = 0xFF,
+        eStreamId_DSMCC_stream             = 0xF2,
+        eStreamId_ITUT_H222_1_type_E       = 0xF8,
+    };
+
+    void setMPacketStartCodePrefix(const bitset<24> &mPacketStartCodePrefix);
+
+    void setMStreamId(const bitset<8> &mStreamId);
+
+    void setMPacketLength(const bitset<16> &mPacketLength);
+
+protected:
+    bitset<24> m_PacketStartCodePrefix;
+    bitset<8> m_StreamId;
+    bitset<16> m_PacketLength;
+    bitset<2> PESScramblingControl;
+    bitset<1> PESPriority;
+    bitset<1> DataAlignmentIndicator;
+    bitset<1> Copyright;
+    bitset<1> OriginalOrCopy;
+    bitset<2> PTSDTSFlags;
+    bitset<1> ESCRFlag;
+    bitset<1> ESRateFlag;
+    bitset<1> DSMTrickModeFlag;
+    bitset<1> AdditionalCopyInfoFlag;
+    bitset<1> PESCRCFlag;
+    bitset<1> PESExtensionFlag;
+    bitset<8> PESHeaderDataLength;
+    bitset<3> fPTS;
+    bitset<15> sPTS;
+    bitset<15> tPTS;
+    bitset<3> fDTS;
+    bitset<15> sDTS;
+    bitset<15> tDTS;
+
+public:
+    void     Reset();
+    int32_t  Parse(string Input);
+    void     Print() const;
+
+    void setPesScramblingControl(const bitset<2> &pesScramblingControl);
+    void setPesPriority(const bitset<1> &pesPriority);
+    void setDataAlignmentIndicator(const bitset<1> &dataAlignmentIndicator);
+    void setCopyright(const bitset<1> &copyright);
+    void setOriginalOrCopy(const bitset<1> &originalOrCopy);
+    void setPtsdtsFlags(const bitset<2> &ptsdtsFlags);
+    void setEscrFlag(const bitset<1> &escrFlag);
+    void setEsRateFlag(const bitset<1> &esRateFlag);
+    void setDsmTrickModeFlag(const bitset<1> &dsmTrickModeFlag);
+    void setAdditionalCopyInfoFlag(const bitset<1> &additionalCopyInfoFlag);
+    void setPescrcFlag(const bitset<1> &pescrcFlag);
+    void setPesExtensionFlag(const bitset<1> &pesExtensionFlag);
+    void setPesHeaderDataLength(const bitset<8> &pesHeaderDataLength);
+    void setFpts(const bitset<3> &fPts);
+    void setSpts(const bitset<15> &sPts);
+    void setTpts(const bitset<15> &tPts);
+    void setFdts(const bitset<3> &fDts);
+    void setSdts(const bitset<15> &sDts);
+    void setTdts(const bitset<15> &tDts);
+
+    const bitset<2> &getPesScramblingControl() const;
+    const bitset<1> &getPesPriority() const;
+    const bitset<1> &getDataAlignmentIndicator() const;
+    const bitset<1> &getCopyright() const;
+    const bitset<1> &getOriginalOrCopy() const;
+    const bitset<2> &getPtsdtsFlags() const;
+    const bitset<1> &getEscrFlag() const;
+    const bitset<1> &getEsRateFlag() const;
+    const bitset<1> &getDsmTrickModeFlag() const;
+    const bitset<1> &getAdditionalCopyInfoFlag() const;
+    const bitset<1> &getPescrcFlag() const;
+    const bitset<1> &getPesExtensionFlag() const;
+    const bitset<8> &getPesHeaderDataLength() const;
+    const bitset<3> &getFpts() const;
+    const bitset<15> &getSpts() const;
+    const bitset<15> &getTpts() const;
+    const bitset<3> &getFdts() const;
+    const bitset<15> &getSdts() const;
+    const bitset<15> &getTdts() const;
+
+    //PES packet header
+    uint32_t getPacketStartCodePrefix() const { return (uint32_t) m_PacketStartCodePrefix.to_ulong(); }
+    uint8_t  getStreamId             () const { return (uint16_t) m_StreamId.to_ulong(); }
+    uint16_t getPacketLength         () const { return (uint16_t) m_PacketLength.to_ulong(); }
+};
+
+//=============================================================================================================================================================================
+
+class xPES_Assembler
+{
+public:
+    enum class eResult : int32_t
+    {
+        UnexpectedPID      = 1,
+        StreamPackedLost   = 2,
+        AssemblingStarted  = 3,
+        AssemblingContinue = 4,
+        AssemblingFinished = 5,
+    };
+
+
+
+
+public:
+    void setMPid(int32_t mPid);
+
+protected:
+    string m_Buffer;
+    uint32_t m_DataOffset;
+
+protected:
+    int32_t  m_PID;
+    int8_t            m_LastContinuityCounter;
+    uint8_t           m_EndContinuityCounter;
+    bool              m_Started;
+    xPES_PacketHeader m_PESH;
+
+public:
+    xPES_Assembler ();
+    ~xPES_Assembler();
+
+    void    Init        (int32_t PID);
+    eResult AbsorbPacket(const bitset<8> * TransportStreamPacket, const xTS_PacketHeader* PacketHeader, const xTS_AdaptationField* AdaptationField);
+
+    void     PrintPESH        () const { m_PESH.Print(); }
+    string   getPacket        ()       { return m_Buffer; }
+    int32_t  getNumPacketBytes() const { return m_DataOffset; }
+
+protected:
+    void xBufferReset ();
+    void xBufferAppend(const bitset<8> *Data, int32_t Size);
+};

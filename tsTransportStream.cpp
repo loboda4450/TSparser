@@ -1,6 +1,5 @@
 #include <iostream>
 #include "tsTransportStream.h"
-#define PENIS 0
 #define Hehe 1
 
 using namespace std;
@@ -20,22 +19,19 @@ void xTS_PacketHeader::Reset() {
 }
 
 void xTS_PacketHeader::Print() const {
-    cout << " SB=" <<(uint32_t)(getSyncByte().to_ulong())
-    << " E=" << getTransportErrorIndicator()
-    << " S=" << getPayloadUnitStartIndicator()
-    << " P=" << getTransportPriority()
-    << " PID=" << (uint16_t)(getPacketIdentifier().to_ulong())
-    << " TSC=" << (uint16_t)(getTransportScramblingControl().to_ulong())
-    << " AF=" << (uint16_t)(getAdaptationFieldControl().to_ulong())
-    << " CC=" << (uint16_t)(getContinuityCounter().to_ulong());
-    if(!hasAdaptationField()) cout << endl;
+    printf("SB=%d E=%d S=%d P=%d PID=%d TSC=%d AF=%d CC=%d",
+           (uint32_t) (getSyncByte().to_ulong()),
+           (uint8_t) getTransportErrorIndicator().to_ulong(),
+           (uint8_t) getPayloadUnitStartIndicator().to_ulong(),
+           (uint8_t) getTransportPriority().to_ulong(),
+           (uint16_t) (getPacketIdentifier().to_ulong()),
+           (uint16_t) (getTransportScramblingControl().to_ulong()),
+           (uint16_t) (getAdaptationFieldControl().to_ulong()),
+           (uint16_t) (getContinuityCounter().to_ulong()));
+//    if (!hasAdaptationField()) printf("\n");
 }
 
 int32_t xTS_PacketHeader::Parse(bitset<8> * Input) {
-    if(Input[0].to_string() != "01000111"){
-        return PENIS;
-    }
-
     string Header = Input[0].to_string() + Input[1].to_string() + Input[2].to_string() + Input[3].to_string();
     setSyncByte(bitset<8> (Header.substr(0, 8)));
     setTransportErrorIndicator(bitset<1>(Header[8]));
@@ -165,31 +161,34 @@ void xTS_AdaptationField::Reset() {
 }
 
 void xTS_AdaptationField::Print() const {
-    cout << " AF: L=" << (uint16_t) getAdaptationFieldLength().to_ulong()
-         << " DC=" << getDiscontinuityIndicator()
-         << " RA=" << getRandomAccessIndicator()
-         << " SP=" << getElementaryStreamPriorityIndicator()
-         << " PR=" << getProgramClockReferenceFlag()
-         << " OR=" << getOriginalProgramClockReferenceFlag()
-         << " SP=" << getSplicingPointFlag()
-         << " TP=" << getTransportPrivateDataFlag()
-         << " EX=" << getAdaptationFieldExtensionFlag();
+    printf(" AF: L=%d DC=%d RA=%d SP=%d PR=%d OR=%d SP=%d TP=%d EX=%d",
+           (uint16_t) getAdaptationFieldLength().to_ulong(),
+           (uint8_t) getDiscontinuityIndicator().to_ulong(),
+           (uint8_t) getRandomAccessIndicator().to_ulong(),
+           (uint8_t) getElementaryStreamPriorityIndicator().to_ulong(),
+           (uint8_t) getProgramClockReferenceFlag().to_ulong(),
+           (uint8_t) getOriginalProgramClockReferenceFlag().to_ulong(),
+           (uint8_t) getSplicingPointFlag().to_ulong(),
+           (uint8_t) getTransportPrivateDataFlag().to_ulong(),
+           (uint8_t) getAdaptationFieldExtensionFlag().to_ulong());
 
-    if(getProgramClockReferenceFlag() == 1) {
-        cout << " PCR=" << getProgramClockReferenceBase().to_ulong()*300+getProgramClockReferenceExtension().to_ulong();
+    if (getProgramClockReferenceFlag() == 1) {
+        printf(" PCR=%lu",
+               getProgramClockReferenceBase().to_ulong() * xTS::BaseToExtendedClockMultiplier + getProgramClockReferenceExtension().to_ulong());
     }
-    if(getOriginalProgramClockReferenceFlag() == 1) {
-        cout << " OPCR=" << getOriginalProgramClockReferenceBase().to_ulong()*300+getOriginalProgramClockReferenceExtension().to_ulong();
+    if (getOriginalProgramClockReferenceFlag() == 1) {
+        printf(" OPCR=%lu", getOriginalProgramClockReferenceBase().to_ulong() * xTS::BaseToExtendedClockMultiplier +
+                            getOriginalProgramClockReferenceExtension().to_ulong());
     }
 
-    cout << " Stuffing=" << getStuffingLength() << endl;
+    printf(" Stuffing=%d", getStuffingLength());
 }
 
 int32_t xTS_AdaptationField::Parse(bitset<8> *Input, bitset<2> AdaptationFieldControl) {
     size_t index = 0;
     string af;
 
-    for(int i = 5; i < 188;i++){
+    for(int i = xTS::TS_HeaderLength + 1; i < 188;i++){
         af += Input[i].to_string();
     }
 
@@ -557,4 +556,351 @@ void xTS_AdaptationField::setAfexReservedLength(u_int16_t afexReservedLength) {
 
 void xTS_AdaptationField::setStuffingLength(u_int16_t stuffingLength) {
     StuffingLength = stuffingLength;
+}
+
+//=============================================================================================================================================================================
+// xPES_PacketHeader
+//=============================================================================================================================================================================
+
+void xPES_PacketHeader::Reset() {
+    setMPacketStartCodePrefix(bitset<24>(0x000000000000000000000000));
+    setMStreamId(bitset<8>(0x00000000));
+    setMPacketLength(bitset<16>(0x0000000000000000));
+    setPesScramblingControl(bitset<2>(0x00));
+    setPesPriority(bitset<1>(0x0));
+    setDataAlignmentIndicator(bitset<1>(0x0));
+    setCopyright(bitset<1>(0x0));
+    setOriginalOrCopy(bitset<1>(0x0));
+    setPtsdtsFlags(bitset<2>(0x00));
+    setEscrFlag(bitset<1>(0x0));
+    setEsRateFlag(bitset<1>(0x0));
+    setDsmTrickModeFlag(bitset<1>(0x0));
+    setAdditionalCopyInfoFlag(bitset<1>(0x0));
+    setPescrcFlag(bitset<1>(0x0));
+    setPesExtensionFlag(bitset<1>(0x0));
+    setPesHeaderDataLength(bitset<8>(0x00000000));
+    setFpts(bitset<3>(0x000));
+    setSpts(bitset<15>(0x000000000000000));
+    setTpts(bitset<15>(0x000000000000000));
+    setFdts(bitset<3>(0x000));
+    setSdts(bitset<15>(0x000000000000000));
+    setTdts(bitset<15>(0x000000000000000));
+}
+
+int32_t xPES_PacketHeader::Parse(const string Input) {
+    size_t index = 0;
+    setMPacketStartCodePrefix(bitset<24>(Input.substr(index, 24)));
+    index += 24;
+    setMStreamId(bitset<8>(Input.substr(index, 8)));
+    index += 8;
+    setMPacketLength(bitset<16>(Input.substr(index, 16)));
+    index += 16;
+    uint32_t u_m_StreamId = m_StreamId.to_ulong();
+    if (u_m_StreamId != eStreamId::eStreamId_program_stream_map
+        and u_m_StreamId != eStreamId::eStreamId_padding_stream
+        and u_m_StreamId != eStreamId::eStreamId_private_stream_2
+        and u_m_StreamId != eStreamId::eStreamId_ECM
+        and u_m_StreamId != eStreamId::eStreamId_EMM
+        and u_m_StreamId != eStreamId::eStreamId_program_stream_directory
+        and u_m_StreamId != eStreamId::eStreamId_DSMCC_stream
+        and u_m_StreamId != eStreamId::eStreamId_ITUT_H222_1_type_E
+        and Input.length() > 48) {
+        index +=2;
+        setPesScramblingControl(bitset<2>(Input.substr(index, 2)));
+        index += 2;
+        setPesPriority(bitset<1>(Input[index++]));
+        setDataAlignmentIndicator(bitset<1>(Input[index++]));
+        setCopyright(bitset<1>(Input[index++]));
+        setOriginalOrCopy(bitset<1>(Input[index++]));
+        setPtsdtsFlags(bitset<2>(Input.substr(index, 2)));
+        index += 2;
+        setEscrFlag(bitset<1>(Input[index++]));
+        setEsRateFlag(bitset<1>(Input[index++]));
+        setDsmTrickModeFlag(bitset<1>(Input[index++]));
+        setAdditionalCopyInfoFlag(bitset<1>(Input[index++]));
+        setPescrcFlag(bitset<1>(Input[index++]));
+        setPesExtensionFlag(bitset<1>(Input[index++]));
+        setPesHeaderDataLength(bitset<8>(Input.substr(index, 8)));
+        index += 8;
+        if (getPtsdtsFlags().to_string() == "10") {
+            index += 4;
+            setFpts(bitset<3>(Input.substr(index, 3)));
+            index += 4;
+            setSpts(bitset<15>(Input.substr(index, 15)));
+            index += 16;
+            setTpts(bitset<15>(Input.substr(index, 15)));
+            index += 16;
+        } else if (getPtsdtsFlags().to_string() == "11") {
+            index += 4;
+            setFpts(bitset<3>(Input.substr(index, 3)));
+            index += 4;
+            setSpts(bitset<15>(Input.substr(index, 15)));
+            index += 16;
+            setTpts(bitset<15>(Input.substr(index, 15)));
+            index += 20;
+            setFdts(bitset<3>(Input.substr(index, 3)));
+            index += 4;
+            setSdts(bitset<15>(Input.substr(index, 15)));
+            index += 16;
+            setTdts(bitset<15>(Input.substr(index, 15)));
+        }
+    }
+    return 0;
+}
+
+void xPES_PacketHeader::Print() const {
+    printf(" PSCP=%d SID=%d PL=%d HL=%lu DL=%lu",
+            getPacketStartCodePrefix(),
+            getStreamId(),
+            getPacketLength(),
+            getPesHeaderDataLength().to_ulong() + xTS::TS_HeaderLength + 3,
+            getPacketLength() - getPesHeaderDataLength().to_ulong() - 3);
+    if(getPtsdtsFlags().to_string() == "10"){
+        printf(" PTS=%lu", (bitset<33> (getFpts().to_string() + getSpts().to_string() + getTpts().to_string())).to_ulong());
+        if(getPtsdtsFlags().to_string() == "11"){
+            printf(" DTS=%lu", (bitset<33> (getFdts().to_string() + getSdts().to_string() + getTdts().to_string())).to_ulong());
+        }
+    }
+}
+
+void xPES_PacketHeader::setMPacketStartCodePrefix(const bitset<24> &mPacketStartCodePrefix) {
+    m_PacketStartCodePrefix = mPacketStartCodePrefix;
+}
+
+void xPES_PacketHeader::setMStreamId(const bitset<8> &mStreamId) {
+    m_StreamId = mStreamId;
+}
+
+void xPES_PacketHeader::setMPacketLength(const bitset<16> &mPacketLength) {
+    m_PacketLength = mPacketLength;
+}
+
+const bitset<2> &xPES_PacketHeader::getPesScramblingControl() const {
+    return PESScramblingControl;
+}
+
+const bitset<1> &xPES_PacketHeader::getPesPriority() const {
+    return PESPriority;
+}
+
+const bitset<1> &xPES_PacketHeader::getDataAlignmentIndicator() const {
+    return DataAlignmentIndicator;
+}
+
+const bitset<1> &xPES_PacketHeader::getCopyright() const {
+    return Copyright;
+}
+
+const bitset<1> &xPES_PacketHeader::getOriginalOrCopy() const {
+    return OriginalOrCopy;
+}
+
+const bitset<2> &xPES_PacketHeader::getPtsdtsFlags() const {
+    return PTSDTSFlags;
+}
+
+const bitset<1> &xPES_PacketHeader::getEscrFlag() const {
+    return ESCRFlag;
+}
+
+const bitset<1> &xPES_PacketHeader::getEsRateFlag() const {
+    return ESRateFlag;
+}
+
+const bitset<1> &xPES_PacketHeader::getDsmTrickModeFlag() const {
+    return DSMTrickModeFlag;
+}
+
+const bitset<1> &xPES_PacketHeader::getAdditionalCopyInfoFlag() const {
+    return AdditionalCopyInfoFlag;
+}
+
+const bitset<1> &xPES_PacketHeader::getPescrcFlag() const {
+    return PESCRCFlag;
+}
+
+const bitset<1> &xPES_PacketHeader::getPesExtensionFlag() const {
+    return PESExtensionFlag;
+}
+
+const bitset<8> &xPES_PacketHeader::getPesHeaderDataLength() const {
+    return PESHeaderDataLength;
+}
+
+const bitset<3> &xPES_PacketHeader::getFpts() const {
+    return fPTS;
+}
+
+const bitset<15> &xPES_PacketHeader::getSpts() const {
+    return sPTS;
+}
+
+const bitset<15> &xPES_PacketHeader::getTpts() const {
+    return tPTS;
+}
+
+const bitset<3> &xPES_PacketHeader::getFdts() const {
+    return fDTS;
+}
+
+const bitset<15> &xPES_PacketHeader::getSdts() const {
+    return sDTS;
+}
+
+const bitset<15> &xPES_PacketHeader::getTdts() const {
+    return tDTS;
+}
+
+void xPES_PacketHeader::setPesScramblingControl(const bitset<2> &pesScramblingControl) {
+    PESScramblingControl = pesScramblingControl;
+}
+
+void xPES_PacketHeader::setPesPriority(const bitset<1> &pesPriority) {
+    PESPriority = pesPriority;
+}
+
+void xPES_PacketHeader::setDataAlignmentIndicator(const bitset<1> &dataAlignmentIndicator) {
+    DataAlignmentIndicator = dataAlignmentIndicator;
+}
+
+void xPES_PacketHeader::setCopyright(const bitset<1> &copyright) {
+    Copyright = copyright;
+}
+
+void xPES_PacketHeader::setOriginalOrCopy(const bitset<1> &originalOrCopy) {
+    OriginalOrCopy = originalOrCopy;
+}
+
+void xPES_PacketHeader::setPtsdtsFlags(const bitset<2> &ptsdtsFlags) {
+    PTSDTSFlags = ptsdtsFlags;
+}
+
+void xPES_PacketHeader::setEscrFlag(const bitset<1> &escrFlag) {
+    ESCRFlag = escrFlag;
+}
+
+void xPES_PacketHeader::setEsRateFlag(const bitset<1> &esRateFlag) {
+    ESRateFlag = esRateFlag;
+}
+
+void xPES_PacketHeader::setDsmTrickModeFlag(const bitset<1> &dsmTrickModeFlag) {
+    DSMTrickModeFlag = dsmTrickModeFlag;
+}
+
+void xPES_PacketHeader::setAdditionalCopyInfoFlag(const bitset<1> &additionalCopyInfoFlag) {
+    AdditionalCopyInfoFlag = additionalCopyInfoFlag;
+}
+
+void xPES_PacketHeader::setPescrcFlag(const bitset<1> &pescrcFlag) {
+    PESCRCFlag = pescrcFlag;
+}
+
+void xPES_PacketHeader::setPesExtensionFlag(const bitset<1> &pesExtensionFlag) {
+    PESExtensionFlag = pesExtensionFlag;
+}
+
+void xPES_PacketHeader::setPesHeaderDataLength(const bitset<8> &pesHeaderDataLength) {
+    PESHeaderDataLength = pesHeaderDataLength;
+}
+
+void xPES_PacketHeader::setFpts(const bitset<3> &fPts) {
+    fPTS = fPts;
+}
+
+void xPES_PacketHeader::setSpts(const bitset<15> &sPts) {
+    sPTS = sPts;
+}
+
+void xPES_PacketHeader::setTpts(const bitset<15> &tPts) {
+    tPTS = tPts;
+}
+
+void xPES_PacketHeader::setFdts(const bitset<3> &fDts) {
+    fDTS = fDts;
+}
+
+void xPES_PacketHeader::setSdts(const bitset<15> &sDts) {
+    sDTS = sDts;
+}
+
+void xPES_PacketHeader::setTdts(const bitset<15> &tDts) {
+    tDTS = tDts;
+}
+
+
+
+//=============================================================================================================================================================================
+// xPES_Assembler
+//=============================================================================================================================================================================
+
+xPES_Assembler::xPES_Assembler() {
+
+}
+
+xPES_Assembler::~xPES_Assembler() {
+
+}
+
+void xPES_Assembler::Init(int32_t PID) {
+    setMPid(PID);
+}
+
+void xPES_Assembler::setMPid(int32_t mPid) {
+    m_PID = mPid;
+}
+
+
+xPES_Assembler::eResult xPES_Assembler::AbsorbPacket(const bitset<8> *TransportStreamPacket, const xTS_PacketHeader *PacketHeader,
+                                                     const xTS_AdaptationField *AdaptationField) {
+
+    if (PacketHeader->getPacketIdentifier().to_ulong() == m_PID) {
+        uint8_t cc = PacketHeader->getContinuityCounter().to_ulong();
+        if (PacketHeader->getPayloadUnitStartIndicator().to_ulong() == 1) {
+            xBufferReset();
+            m_PESH.Reset();
+            m_Started = true;
+            m_LastContinuityCounter = cc;
+            m_EndContinuityCounter = (cc + 15) % 16;
+            if (PacketHeader->hasPayload()) {
+                xBufferAppend(TransportStreamPacket,
+                              xTS::TS_HeaderLength + AdaptationField->getAdaptationFieldLength().to_ulong() + 1);
+            }
+
+            return xPES_Assembler::eResult::AssemblingStarted;
+
+        } else if (cc == m_EndContinuityCounter) {
+            if (PacketHeader->hasPayload()) {
+                xBufferAppend(TransportStreamPacket,
+                              xTS::TS_HeaderLength + AdaptationField->getAdaptationFieldLength().to_ulong() + 1);
+            }
+            m_PESH.Reset();
+            m_PESH.Parse(m_Buffer);
+            m_DataOffset = m_PESH.getPacketLength() + xTS::PES_HeaderLength;
+            return xPES_Assembler::eResult::AssemblingFinished;
+        } else if (0 <= cc and cc <= 15 and cc == (m_LastContinuityCounter + 1) % 16 and m_Started) {
+            m_LastContinuityCounter++;
+            if (PacketHeader->hasPayload()) {
+                xBufferAppend(TransportStreamPacket,
+                              xTS::TS_HeaderLength + AdaptationField->getAdaptationFieldLength().to_ulong() + 1);
+            }
+
+            return xPES_Assembler::eResult::AssemblingContinue;
+        } else {
+            xBufferReset();
+            return xPES_Assembler::eResult::StreamPackedLost;
+        }
+    } else return xPES_Assembler::eResult::UnexpectedPID;
+}
+
+void xPES_Assembler::xBufferReset() {
+    m_Started = false;
+    m_LastContinuityCounter = 0;
+    m_EndContinuityCounter = 15;
+    m_Buffer = "";
+}
+
+void xPES_Assembler::xBufferAppend(const bitset<8> *Input, int32_t Size) {
+    for(int i = Size; i < xTS::TS_PacketLength; i++){
+        m_Buffer += Input[i].to_string();
+    }
 }
