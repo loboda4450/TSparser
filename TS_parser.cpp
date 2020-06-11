@@ -1,8 +1,21 @@
 #include <iostream>
+#include <fstream>
 #include "tsCommon.h"
 #include "tsTransportStream.h"
 
 using namespace std;
+
+ofstream ofs_audio("parsed_audio.mp2", ofstream::binary);
+
+
+void save(string data, uint32_t data_len){
+    for(size_t i = data.size() - data_len; i < data_len; i+=8){
+        string sub = data.substr(i, 8);
+        bitset<8> bit(sub);
+        char c = static_cast<char>(bit.to_ulong());
+        ofs_audio << c;
+    }
+}
 
 
 int main( int argc, char *argv[ ], char *envp[ ]) {
@@ -12,7 +25,7 @@ int main( int argc, char *argv[ ], char *envp[ ]) {
         return EXIT_FAILURE;
     }
 
-    char *buffer;
+    char * buffer;
     buffer = (char *) malloc(sizeof(char) * xTS::TS_PacketLength);
 
     xTS_PacketHeader TS_PacketHeader;
@@ -58,7 +71,8 @@ int main( int argc, char *argv[ ], char *envp[ ]) {
                 printf(" PES: Continue\n");
                 break;
             case xPES_Assembler::eResult::AssemblingFinished:
-                printf(" PES: Finished Len=%d", PES_Assembler.getNumPacketBytes());
+                printf(" PES: Finished");
+                save(PES_Assembler.getPacket(), PES_Assembler.getNumPacketBytes());
                 PES_Assembler.PrintPESH();
                 printf("\n");
                 break;

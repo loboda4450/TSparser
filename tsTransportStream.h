@@ -67,16 +67,6 @@ protected:
     bitset<4>  continuityCounter;
 
 public:
-    enum class ePID : uint16_t {
-        PAT = 0x0000,
-        CAT = 0x0001,
-        TSDT = 0x0002,
-        IPMT = 0x0003,
-        NIT = 0x0010, //DVB specific PID
-        SDT = 0x0011, //DVB specific PID
-        NuLL = 0x1FFF,
-    };
-
     void setSyncByte(const bitset<8> &syncByte);
     void setTransportErrorIndicator(const bitset<1> &transportErrorIndicator);
     void setPayloadUnitStartIndicator(const bitset<1> &payloadUnitStartIndicator);
@@ -357,7 +347,7 @@ public:
     eResult AbsorbPacket(const bitset<8> * TransportStreamPacket, const xTS_PacketHeader* PacketHeader, const xTS_AdaptationField* AdaptationField);
 
     void     PrintPESH        () const { m_PESH.Print(); }
-    string   getPacket        ()       { return m_Buffer; }
+    string   getPacket        ();
     int32_t  getNumPacketBytes() const { return m_DataOffset; }
 
 protected:

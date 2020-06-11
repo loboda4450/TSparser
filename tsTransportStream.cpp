@@ -649,11 +649,11 @@ int32_t xPES_PacketHeader::Parse(const string Input) {
 }
 
 void xPES_PacketHeader::Print() const {
-    printf(" PSCP=%d SID=%d PL=%d HL=%lu DL=%lu",
+    printf(" PSCP=%d SID=%d PL=%u HL=%lu DL=%lu",
             getPacketStartCodePrefix(),
             getStreamId(),
-            getPacketLength(),
-            getPesHeaderDataLength().to_ulong() + xTS::TS_HeaderLength + 3,
+            getPacketLength() + xTS::PES_HeaderLength,
+            getPesHeaderDataLength().to_ulong() + xTS::PES_HeaderLength + 3,
             getPacketLength() - getPesHeaderDataLength().to_ulong() - 3);
     if(getPtsdtsFlags().to_string() == "10"){
         printf(" PTS=%lu", (bitset<33> (getFpts().to_string() + getSpts().to_string() + getTpts().to_string())).to_ulong());
@@ -828,7 +828,6 @@ void xPES_PacketHeader::setTdts(const bitset<15> &tDts) {
 }
 
 
-
 //=============================================================================================================================================================================
 // xPES_Assembler
 //=============================================================================================================================================================================
@@ -875,8 +874,10 @@ xPES_Assembler::eResult xPES_Assembler::AbsorbPacket(const bitset<8> *TransportS
             }
             m_PESH.Reset();
             m_PESH.Parse(m_Buffer);
-            m_DataOffset = m_PESH.getPacketLength() + xTS::PES_HeaderLength;
+            m_DataOffset = m_PESH.getPacketLength() - m_PESH.getPesHeaderDataLength().to_ulong() - 3;
+
             return xPES_Assembler::eResult::AssemblingFinished;
+
         } else if (0 <= cc and cc <= 15 and cc == (m_LastContinuityCounter + 1) % 16 and m_Started) {
             m_LastContinuityCounter++;
             if (PacketHeader->hasPayload()) {
@@ -903,4 +904,8 @@ void xPES_Assembler::xBufferAppend(const bitset<8> *Input, int32_t Size) {
     for(int i = Size; i < xTS::TS_PacketLength; i++){
         m_Buffer += Input[i].to_string();
     }
+}
+
+string xPES_Assembler::getPacket() {
+    return m_Buffer;
 }
